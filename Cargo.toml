@@ -1,0 +1,11 @@
+[package]
+name = "libloe"
+version = "0.1.0"
+authors = ["lausek <root@lausek.eu>"]
+edition = "2018"
+
+[lib]
+name = "libloe"
+crate-type = ["staticlib"]
+
+[dependencies]
