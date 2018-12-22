@@ -6,6 +6,6 @@ edition = "2018"
 
 [lib]
 name = "libloe"
-crate-type = ["staticlib"]
+crate-type = ["staticlib", "dylib", "rlib"]
 
 [dependencies]

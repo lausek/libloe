@@ -1,6 +1,4 @@
-mod buffer;
-
-pub use self::buffer::Buffer;
+pub mod buffer;
 
 pub enum CursorMove
 {

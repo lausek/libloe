@@ -13,7 +13,7 @@ pub struct Buffer
     pub cursor: Position,
 }
 
-fn create(path: &str) -> Result<Buffer, std::io::Error>
+pub fn create(path: &str) -> Result<Buffer, std::io::Error>
 {
     let mut pathbuf = PathBuf::new();
     // TODO: normalize path here
@@ -27,7 +27,7 @@ fn create(path: &str) -> Result<Buffer, std::io::Error>
     Ok(buffer)
 }
 
-fn load(path: &str) -> Result<Buffer, std::io::Error>
+pub fn load(path: &str) -> Result<Buffer, std::io::Error>
 {
     let mut pathbuf = PathBuf::new();
     let path = std::fs::canonicalize(path)?;
@@ -43,7 +43,7 @@ fn load(path: &str) -> Result<Buffer, std::io::Error>
     Ok(buffer)
 }
 
-fn write(buffer: &mut Buffer, path: &PathBuf) -> Result<(), std::io::Error>
+pub fn write(buffer: &Buffer, path: &PathBuf) -> Result<(), std::io::Error>
 {
     File::create(path).and_then(|mut file| {
         let mut puf = vec![];
@@ -56,7 +56,7 @@ fn write(buffer: &mut Buffer, path: &PathBuf) -> Result<(), std::io::Error>
     })
 }
 
-fn insert(buffer: &mut Buffer, c: char) -> Result<(), &'static str>
+pub fn insert(buffer: &mut Buffer, c: char) -> Result<(), &'static str>
 {
     let (cx, cy) = buffer.cursor;
     if let Some(line) = buffer.content.get_mut(cy as usize) {
@@ -68,7 +68,7 @@ fn insert(buffer: &mut Buffer, c: char) -> Result<(), &'static str>
     }
 }
 
-fn insert_newline(buffer: &mut Buffer) -> Result<(), &'static str>
+pub fn insert_newline(buffer: &mut Buffer) -> Result<(), &'static str>
 {
     let (cx, cy) = buffer.cursor;
     let line = buffer.content.get_mut(cy as usize);
@@ -91,7 +91,7 @@ fn insert_newline(buffer: &mut Buffer) -> Result<(), &'static str>
     Ok(())
 }
 
-fn remove(buffer: &mut Buffer) -> Result<(), &'static str>
+pub fn remove(buffer: &mut Buffer) -> Result<(), &'static str>
 {
     let (cx, cy) = buffer.cursor;
     let (nx, ny) = (cx - 1, cy - 1);
@@ -120,12 +120,12 @@ fn remove(buffer: &mut Buffer) -> Result<(), &'static str>
     }
 }
 
-fn get_row_at(buffer: &Buffer, line: usize) -> Option<&str>
+pub fn get_row_at(buffer: &Buffer, line: usize) -> Option<&str>
 {
     buffer.content.get(line).and_then(|c| Some(c.as_ref()))
 }
 
-fn move_cursor(buffer: &mut Buffer, mv: CursorMove)
+pub fn move_cursor(buffer: &mut Buffer, mv: CursorMove)
 {
     let (x, y) = match mv {
         Absolute(x, y) => (x, y),
