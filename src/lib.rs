@@ -1,6 +1,6 @@
 pub mod buffer;
 
-pub type DispatchResult<T> = Result<T, String>;
+pub type DispatchResult = Result<(), String>;
 
 pub enum CursorMove
 {
