@@ -1,5 +1,7 @@
 pub mod buffer;
 
+pub type DispatchResult<T> = Result<T, String>;
+
 pub enum CursorMove
 {
     Absolute(i64, i64),

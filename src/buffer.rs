@@ -38,7 +38,7 @@ pub fn load(path: &str) -> Result<Buffer, std::io::Error>
     let buffer = Buffer {
         cursor: (0, 0),
         src_path: Some(pathbuf),
-        content: content.split('\n').map(|r| String::from(r)).collect(),
+        content: content.split('\n').map(String::from).collect(),
     };
     Ok(buffer)
 }
