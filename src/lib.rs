@@ -16,6 +16,7 @@ pub mod plugin
     pub type NameCallback = unsafe extern "C" fn() -> &'static str;
     pub type CommandsCallback = unsafe extern "C" fn() -> Vec<String>;
     pub type DispatchCallback =
-        unsafe extern "C" fn(&mut crate::buffer::Buffer, &str) -> Result<(), String>;
+        unsafe extern "C" fn(&mut crate::buffer::Buffer, &str) -> DispatchResult;
+    pub type DispatchResult = Result<(), String>;
     pub type UnloadCallback = unsafe extern "C" fn();
 }
