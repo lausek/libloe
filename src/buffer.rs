@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 
-use crate::{CursorMove, CursorMove::*};
+use crate::input::{CursorMove, CursorMove::*};
 
 pub type Position = (i64, i64);
 
