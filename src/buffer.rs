@@ -102,6 +102,7 @@ pub fn remove(buffer: &mut Buffer) -> Result<(), &'static str>
         if 0 <= nx && nx < len {
             line.remove(nx as usize);
             move_cursor(buffer, Relative(-1, 0));
+            return Ok(());
         }
         if nx < 0 && 0 <= ny && 1 < buffer.content.len() {
             let removed = buffer.content.remove(cy as usize);
@@ -113,8 +114,9 @@ pub fn remove(buffer: &mut Buffer) -> Result<(), &'static str>
                     .expect("line for appending not available")
                     .push_str(&removed);
             }
+            return Ok(());
         }
-        Ok(())
+        return Err("move is invalid");
     } else {
         Err("line not available")
     }
@@ -125,6 +127,7 @@ pub fn get_row_at(buffer: &Buffer, line: usize) -> Option<&str>
     buffer.content.get(line).and_then(|c| Some(c.as_ref()))
 }
 
+// retrun false or true wether the move has been executed
 pub fn move_cursor(buffer: &mut Buffer, mv: CursorMove)
 {
     let (x, y) = match mv {
