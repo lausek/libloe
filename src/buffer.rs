@@ -13,6 +13,26 @@ pub struct Buffer
     pub cursor: Position,
 }
 
+// normalizes the cursor position to a `String` internal codepoint
+fn get_char_index(line: &str, pos: usize) -> usize
+{
+    line.char_indices()
+        .nth(pos)
+        .and_then(|(idx, _)| Some(idx))
+        .unwrap_or_else(|| line.len())
+}
+
+// &str.len() doesn't recognise multibyte chars
+fn get_row_len(line: &str) -> usize
+{
+    line.chars().count()
+}
+
+pub fn get_row_at(buffer: &Buffer, line: usize) -> Option<&str>
+{
+    buffer.content.get(line).and_then(|c| Some(c.as_ref()))
+}
+
 pub fn create(path: &str) -> Result<Buffer, std::io::Error>
 {
     let mut pathbuf = PathBuf::new();
@@ -60,7 +80,8 @@ pub fn insert(buffer: &mut Buffer, c: char) -> Result<(), &'static str>
 {
     let (cx, cy) = buffer.cursor;
     if let Some(line) = buffer.content.get_mut(cy as usize) {
-        line.insert(cx as usize, c);
+        let idx = get_char_index(line, cx as usize);
+        line.insert(idx, c);
         move_cursor(buffer, Relative(1, 0));
         Ok(())
     } else {
@@ -71,60 +92,62 @@ pub fn insert(buffer: &mut Buffer, c: char) -> Result<(), &'static str>
 pub fn insert_newline(buffer: &mut Buffer) -> Result<(), &'static str>
 {
     let (cx, cy) = buffer.cursor;
-    let line = buffer.content.get_mut(cy as usize);
-    if line.is_none() {
-        return Err("line not available");
-    }
-    let line = line.unwrap();
-
-    {
+    if let Some(line) = buffer.content.get_mut(cy as usize) {
+        let idx = get_char_index(line, cx as usize);
         let (left, right) = {
-            let (l, r) = line.split_at(cx as usize);
+            let (l, r) = line.split_at(idx as usize);
             (l.to_string(), r.to_string())
         };
         *line = left;
         buffer.content.insert((cy + 1) as usize, right);
-    }
 
-    move_cursor(buffer, Absolute(0, cy + 1));
+        move_cursor(buffer, Absolute(0, cy + 1));
 
-    Ok(())
-}
-
-pub fn remove(buffer: &mut Buffer) -> Result<(), &'static str>
-{
-    let (cx, cy) = buffer.cursor;
-    let (nx, ny) = (cx - 1, cy - 1);
-
-    if let Some(line) = buffer.content.get_mut(cy as usize) {
-        // TODO: that is disgusting
-        let len = line.len() as i64;
-        if 0 <= nx && nx < len {
-            line.remove(nx as usize);
-            move_cursor(buffer, Relative(-1, 0));
-            return Ok(());
-        }
-        if nx < 0 && 0 <= ny && 1 < buffer.content.len() {
-            let removed = buffer.content.remove(cy as usize);
-            move_cursor(buffer, EndOfRow(ny));
-            if len != 0 {
-                buffer
-                    .content
-                    .get_mut(ny as usize)
-                    .expect("line for appending not available")
-                    .push_str(&removed);
-            }
-            return Ok(());
-        }
-        return Err("move is invalid");
+        Ok(())
     } else {
         Err("line not available")
     }
 }
 
-pub fn get_row_at(buffer: &Buffer, line: usize) -> Option<&str>
+pub fn remove(buffer: &mut Buffer) -> Result<(), &'static str>
 {
-    buffer.content.get(line).and_then(|c| Some(c.as_ref()))
+    let (cx, cy) = buffer.cursor;
+    // position on which the cursor will be set after removing
+    let (next_x, next_y) = (cx - 1, cy - 1);
+
+    if let Some(line) = buffer.content.get_mut(cy as usize) {
+        // TODO: that is disgusting
+        let len = get_row_len(line) as i64;
+        // if next cursor pos is still in line's range: no linebreak needed
+        if 0 <= next_x && next_x < len {
+            let idx = get_char_index(line, next_x as usize);
+            if idx == len as usize {
+                line.pop().unwrap();
+            } else {
+                line.remove(idx);
+            }
+            move_cursor(buffer, Relative(-1, 0));
+            return Ok(());
+        }
+    } else {
+        return Err("line not available");
+    }
+    // if next cursor pos is not in line's range
+    if next_x < 0 && 0 <= next_y && 1 < buffer.content.len() {
+        //let idx = get_char_index(line, cy as usize);
+        // remove whole line and append to next one
+        let removed = buffer.content.remove(cy as usize);
+        move_cursor(buffer, AfterRow(next_y));
+        if !removed.is_empty() {
+            buffer
+                .content
+                .get_mut(next_y as usize)
+                .expect("line for appending not available")
+                .push_str(&removed);
+        }
+        return Ok(());
+    }
+    Err("move is invalid")
 }
 
 // retrun false or true wether the move has been executed
@@ -132,7 +155,7 @@ pub fn move_cursor(buffer: &mut Buffer, mv: CursorMove)
 {
     let (x, y) = match mv {
         Absolute(x, y) => (x, y),
-        EndOfRow(y) => (0, y),
+        EndOfRow(y) | AfterRow(y) => (0, y),
         CurrentRow(x) => (x, buffer.cursor.1),
         Relative(rx, ry) => {
             let (cx, cy) = buffer.cursor;
@@ -141,10 +164,11 @@ pub fn move_cursor(buffer: &mut Buffer, mv: CursorMove)
     };
     if let Some(line) = buffer.content.get(y as usize) {
         buffer.cursor.1 = y;
-        let len = line.len() as i64;
+        let len = get_row_len(line) as i64;
 
         match mv {
-            EndOfRow(_) => buffer.cursor.0 = len,
+            EndOfRow(_) => buffer.cursor.0 = len - 1,
+            AfterRow(_) => buffer.cursor.0 = len,
             _ => {
                 if 0 <= x {
                     buffer.cursor.0 = x;

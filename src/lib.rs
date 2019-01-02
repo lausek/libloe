@@ -7,6 +7,7 @@ pub mod input
         Absolute(i64, i64),
         Relative(i64, i64),
         EndOfRow(i64),
+        AfterRow(i64),
         CurrentRow(i64),
     }
 }
@@ -60,7 +61,7 @@ Second line here
         assert_eq!(get_row_at(&mut buf, 0), Some("very First line"));
 
         // append to line
-        move_cursor(&mut buf, CursorMove::EndOfRow(0));
+        move_cursor(&mut buf, CursorMove::AfterRow(0));
         assert!(insert_str(&mut buf, " appended"));
         assert_eq!(get_row_at(&mut buf, 0), Some("very First line appended"));
 
@@ -78,7 +79,7 @@ Second line here
         assert_eq!(get_row_at(&mut buf, 2), Some("Second line here"));
 
         // append new line to text
-        move_cursor(&mut buf, CursorMove::EndOfRow(2));
+        move_cursor(&mut buf, CursorMove::AfterRow(2));
         assert!(insert_newline(&mut buf).is_ok());
         assert!(insert_str(&mut buf, "added third line"));
         assert_eq!(get_row_at(&mut buf, 3), Some("added third line"));
@@ -128,10 +129,10 @@ Second line here
         assert_eq!(buf.cursor, (2, 1));
 
         move_cursor(&mut buf, CursorMove::EndOfRow(0));
-        assert_eq!(buf.cursor, (10, 0));
+        assert_eq!(buf.cursor, (9, 0));
 
         move_cursor(&mut buf, CursorMove::EndOfRow(1));
-        assert_eq!(buf.cursor, (16, 1));
+        assert_eq!(buf.cursor, (15, 1));
 
         // if current line is longer than target line:
         // set cursor_x to target line len
@@ -150,4 +151,31 @@ Second line here
         assert_eq!(buf.cursor, (0, 0));
     }
 
+    #[test]
+    pub fn buffer_multibyte()
+    {
+        let text = r#"det hä är en text"#;
+        let mut buf = Buffer {
+            src_path: None,
+            content: text.split('\n').map(String::from).collect(),
+            cursor: (0, 0),
+        };
+
+        // without recognising multibyte chars, this will move
+        // the cursor right into a non-codepoint
+        move_cursor(&mut buf, CursorMove::CurrentRow(6));
+        assert!(insert(&mut buf, 'r').is_ok());
+        assert_eq!(get_row_at(&mut buf, 0), Some("det här är en text"));
+
+        // try inserting a new line
+        move_cursor(&mut buf, CursorMove::CurrentRow(9));
+        assert!(insert_newline(&mut buf).is_ok());
+        assert_eq!(get_row_at(&mut buf, 0), Some("det här ä"));
+        assert_eq!(get_row_at(&mut buf, 1), Some("r en text"));
+
+        // try removing a multibyte char
+        move_cursor(&mut buf, CursorMove::EndOfRow(0));
+        assert!(remove(&mut buf).is_ok());
+        assert_eq!(get_row_at(&mut buf, 0), Some("det här "));
+    }
 }
